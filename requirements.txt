@@ -1,0 +1,21 @@
+# Core ML / training
+torch>=2.2
+transformers>=4.46
+accelerate>=0.34
+deepspeed>=0.15
+
+# Data processing / serialization
+pandas>=2.2
+pyarrow>=17.0
+tqdm>=4.66
+requests>=2.32
+
+# LLM APIs
+openai>=1.50
+
+# PDF and review data collection
+PyMuPDF>=1.24
+openreview-py>=1.46
+
+# Optional but commonly used with the training scripts
+wandb>=0.18
