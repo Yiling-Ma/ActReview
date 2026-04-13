@@ -69,16 +69,22 @@ JUDGE_CACHE_PATH      = Path(
 JUDGE_SYSTEM = """\
 You are a strict but fair grader evaluating the quality of an academic peer review output.
 You will be given a Task 2 (Actionable Analysis) output and a single grading requirement.
-Score how well the output satisfies the requirement on a scale from 0 to 100.
 
-Scoring guide:
-- 100: Requirement is fully and clearly satisfied
-- 75:  Requirement is mostly satisfied with minor gaps
-- 50:  Requirement is partially satisfied
-- 25:  Requirement is barely satisfied
-- 0:   Requirement is not satisfied at all
+Score how well the output satisfies the requirement using ONE integer from 1 to 5.
 
-Return ONLY a single integer between 0 and 100. No explanation."""
+Scale:
+- 5 = Requirement is fully and clearly satisfied
+- 4 = Requirement is mostly satisfied, with only minor gaps
+- 3 = Requirement is partially satisfied
+- 2 = Requirement is barely satisfied
+- 1 = Requirement is not satisfied
+
+Important rules:
+- Use the full 1-5 range when appropriate.
+- Do not default to 3 unless the evidence is genuinely mixed.
+- Return ONLY a single integer: 1, 2, 3, 4, or 5.
+- Do not provide any explanation.
+"""
 
 _SEVERITY_LEVELS = {"critical", "major", "moderate", "minor"}
 
@@ -281,7 +287,7 @@ def _build_messages(requirement: str, text: str) -> List[Dict]:
                 "## Task Type\nTask 2 (Actionable Analysis)\n\n"
                 f"## Grading Requirement\n{requirement}\n\n"
                 f"## Review Output to Grade\n{text}\n\n"
-                "Score (0-100):"
+                "Score (1-5):"
             ),
         },
     ]
@@ -292,8 +298,13 @@ def _build_messages(requirement: str, text: str) -> List[Dict]:
 # -----------------------------------------------------------------
 
 def _parse_score(raw: str) -> Optional[float]:
-    m = re.search(r"\b(\d{1,3})\b", raw.strip())
-    return float(min(100, max(0, int(m.group(1))))) if m else None
+    m = re.search(r"\b([1-5])\b", raw.strip())
+    return float(int(m.group(1))) if m else None
+
+
+def _score_1_to_reward_continuous(score_1_to_5: float) -> float:
+    score_1_to_5 = max(1.0, min(5.0, float(score_1_to_5)))
+    return float((score_1_to_5 - 1.0) / 4.0)
 
 
 # -----------------------------------------------------------------
@@ -377,9 +388,8 @@ async def _score_async(text: str, rubric: Dict) -> Tuple[float, bool]:
     if total_w == 0:
         return 0.5, True
 
-    s = float(min(1.0, max(0.0,
-        sum(sc * w for sc, w in zip(valid_scores, valid_weights)) / (total_w * 100.0)
-    )))
+    mean_score = sum(sc * w for sc, w in zip(valid_scores, valid_weights)) / total_w
+    s = float(min(1.0, max(0.0, _score_1_to_reward_continuous(mean_score))))
     return s, True
 
 
