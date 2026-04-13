@@ -1,6 +1,5 @@
 """
 Task1-only reward function for verl GRPO training.
-
 Reward formula:
   r = (alpha * S(x) + (1 - alpha) * G(x)) * Q(n) * P(x) * F(x)
 
