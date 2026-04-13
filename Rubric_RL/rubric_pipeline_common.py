@@ -407,7 +407,8 @@ Design 5-6 soft requirements for evaluating Task 1 outputs.
 ## WHAT TASK 1 OUTPUTS LOOK LIKE
 The model outputs a numbered list: "Claim 1: ... Claim 2: ..." or "None".
 Each claim is a single sentence identifying a concrete paper deficiency.
-The model decides how many claims to generate — do NOT evaluate exact count matching.
+Do NOT use crude count-only checks, but you SHOULD use the GT to infer how many DISTINCT weakness families this sample actually contains.
+If the GT clearly contains K distinct weakness families, at least one soft requirement should check whether the candidate also preserves that multiplicity rather than collapsing everything into one broad claim.
 
 ## REQUIRED RUBRIC DESIGN STRATEGY
 First infer:
@@ -435,8 +436,8 @@ A strong Task 1 rubric should usually reward outputs that:
 - stay grounded in the paper's actual evaluation setting;
 - avoid generic "insufficient experiments" complaints with no sample-specific content.
 
-If the GT suggests two distinct weakness families, you may reward separating them,
-but do NOT require exact one-to-one decomposition if a single strong claim captures both families concretely and non-generically.
+If the GT suggests two or more distinct weakness families, the rubric should usually expect the answer to preserve that separation.
+Do NOT give full credit to a single broad umbrella claim when the GT contains multiple clearly different weaknesses, unless those GT weaknesses are truly near-duplicates.
 
 ## CRITICAL RULES
 - At least 2 soft requirements must be clearly derived from GT-specific content.
@@ -445,6 +446,12 @@ but do NOT require exact one-to-one decomposition if a single strong claim captu
 - Do NOT make all requirements generic category-level criteria.
 - Do NOT make all requirements exact GT-detail checks.
 - Prefer requirements that would be noticeably less appropriate for a different paper under the same label.
+- Each soft requirement must test a DIFFERENT grading dimension. Do NOT write overlapping requirements that would reward the same underlying fact twice.
+- If two requirements could both be satisfied by the same sentence/span/evidence in the answer, rewrite them until their scopes are clearly distinct.
+- Requirements must be written as NARROW, NECESSARY conditions, not broad topic hints.
+- Avoid open-ended wording such as "for example", "e.g.", "such as", "including", or "mentions the experimental context" unless the exact allowed alternatives are the thing being tested.
+- Prefer formulations like "At least one claim must explicitly mention X and identify Y" over broad formulations like "Claims should reference the experimental context".
+- A candidate that only vaguely touches the topic must NOT receive credit; the requirement should demand the specific comparison, control, omission, or weakness family that the GT makes central.
 
 ## DO REWARD
 - Capturing the specific experimental weakness families highlighted by the GT for this paper.
@@ -464,8 +471,8 @@ but do NOT require exact one-to-one decomposition if a single strong claim captu
 ## DO NOT EVALUATE
 - Exact wording match to GT.
 - Exact noun overlap with GT.
-- Exact number of claims matching GT.
-- Pure count-based checks such as "has >= 2 claims".
+- Pure count-based checks such as "has >= 2 claims" with no semantic grounding.
+- Superficial topic overlap where the answer only mentions one nearby concept but misses the GT's concrete missing control / comparison / omission.
 
 ## HARD CONSTRAINTS (exactly 2)
 1. "Output must not reference the authors' rebuttal or any post-submission response"
@@ -492,6 +499,8 @@ Rules:
 - type must be "semantic" or "format"
 - Keep hard constraints general and stable; put sample-specificity into soft requirements
 - The final rubric should be sample-specific but should still give credit to alternative valid answers that capture the same core weakness families as the GT
+- Before finalizing, check that each soft requirement is mutually non-overlapping with the others and that satisfying one does not almost automatically satisfy another.
+- Before finalizing, rewrite any requirement that could be satisfied by merely name-dropping one loosely related concept without stating the GT-central missing comparison, control, or omission.
 """
 
 # TASK2 NOT MODIFIED
@@ -552,6 +561,11 @@ or replace a focused fix with a much broader and less diagnostic one.
 - At least 2 soft requirements should still give credit to alternative strong answers that differ from the GT in wording or implementation details.
 - Soft requirements should be atomic and checkable: each one should test a single concrete grading question rather than a vague umbrella notion like "is the answer detailed and specific".
 - Do NOT reward mere topic overlap or broadly related terminology if the answer misses the sample's core missing evidence.
+- Each soft requirement must cover a distinct grading dimension. Do NOT let two requirements reward the same intervention, evidence family, or missing comparison twice.
+- If two requirements could both be satisfied by the same sentence/span, merge or rewrite them so the scopes are clearly different.
+- Requirements must be narrow enough that a superficially related answer cannot pass by only mentioning one nearby concept.
+- Avoid open-ended phrasing like "e.g.", "for example", "such as", "related to", or "mentions the context" unless the allowed alternatives are explicitly the target of the requirement.
+- Prefer formulations that require the candidate to identify the GT-central comparison / control / intervention / evidence family, not just adjacent terminology.
 
 ## WHAT TO REWARD
 - Capturing the same missing evidence or diagnostic need as the GT, even if the proposed fix is not phrased identically.
@@ -593,10 +607,10 @@ Likewise:
 
 After drafting your 5-6 soft requirements, mentally score the BEST non-GT candidate...
 
-If YES (best non-GT > 80/100) — your rubric is too lenient. You MUST revise it.
+If YES (best non-GT averages above about 4.2/5) — your rubric is too lenient. You MUST revise it.
   - Identify which requirement(s) the best non-GT candidate satisfies easily...
   - Rewrite to be more sample-specific and discriminating...
-  - A well-calibrated rubric should have GT scoring ≥10 points higher than best non-GT.
+  - A well-calibrated rubric should have GT scoring at least about 0.5 points higher than best non-GT on the 1-5 scale.
 
 If NO — proceed to output.
 
@@ -631,6 +645,7 @@ Rules:
 - weights will be normalised to 100
 - type must be "semantic" or "format"
 - Keep hard constraints general and stable; put sample-specificity into soft requirements
+- Before finalizing, verify that the best non-GT candidate cannot score highly by satisfying multiple requirements with the same broad, partially related statement.
 """
 
 def build_rubric_extraction_prompt(
@@ -981,19 +996,47 @@ def load_stage3_final_records(path: Path) -> Dict[str, Dict]:
 # OpenAI Batch API helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+def verifier_api_temperature() -> Optional[float]:
+    """
+    Temperature for verifier code-generation calls.
+
+    Some chat deployments (e.g. certain GPT-5 family models) reject ``temperature=0.0``
+    and only allow the server default. In that case omit the parameter entirely.
+
+    Env ``RUBRIC_VERIFIER_TEMPERATURE``:
+      - unset, empty, or ``omit`` / ``default`` / ``none``: omit parameter (API default)
+      - a number string (e.g. ``0``, ``0.0``, ``1``): send that value
+    """
+    raw = os.getenv("RUBRIC_VERIFIER_TEMPERATURE", "").strip().lower()
+    if raw in ("", "omit", "default", "none"):
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def _verifier_chat_completion_kwargs() -> Dict[str, Any]:
+    t = verifier_api_temperature()
+    if t is None:
+        return {}
+    return {"temperature": t}
+
+
 def make_chat_batch_request(
     custom_id: str,
     messages: List[Dict],
-    temperature: float,
     max_completion_tokens: int,
+    temperature: Optional[float] = None,
     response_format: Optional[Dict] = None,
 ) -> Dict:
     body: Dict = {
         "model": get_openai_model_name(),
         "messages": messages,
-        "temperature": temperature,
         "max_completion_tokens": max_completion_tokens,
     }
+    if temperature is not None:
+        body["temperature"] = temperature
     if response_format is not None:
         body["response_format"] = response_format
     return {
@@ -1632,8 +1675,8 @@ def stage_batch_verifiers(
                         messages=[{"role": "user", "content": VERIFIER_PROMPT.format(
                             requirement=req["requirement"]
                         )}],
-                        temperature=0.0,
                         max_completion_tokens=512,
+                        temperature=verifier_api_temperature(),
                     )
                 )
     if not requests:
@@ -1800,8 +1843,8 @@ def stage_sync_verifiers(
                 resp = client.chat.completions.create(
                     model=get_openai_model_name(),
                     messages=[{"role": "user", "content": user_msg}],
-                    temperature=0.0,
                     max_completion_tokens=512,
+                    **_verifier_chat_completion_kwargs(),
                 )
                 raw = _sync_chat_text(resp)
                 if raw:
