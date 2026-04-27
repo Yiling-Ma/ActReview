@@ -52,9 +52,9 @@ ActReview/
 
 The repository includes separate collectors for ICLR, ICML, and EMNLP OpenReview data:
 
-- [get_iclr_raw_data.py](/Users/yiling/Desktop/ActReview/Data_Collection/get_iclr_raw_data.py)
-- [get_icml_raw_data.py](/Users/yiling/Desktop/ActReview/Data_Collection/get_icml_raw_data.py)
-- [get_emnlp_raw_data.py](/Users/yiling/Desktop/ActReview/Data_Collection/get_emnlp_raw_data.py)
+- [get_iclr_raw_data.py](Data_Collection/get_iclr_raw_data.py)
+- [get_icml_raw_data.py](Data_Collection/get_icml_raw_data.py)
+- [get_emnlp_raw_data.py](Data_Collection/get_emnlp_raw_data.py)
 
 Each script outputs one JSONL row per submission with flattened review-thread events.
 
@@ -68,7 +68,7 @@ python Data_Collection/get_emnlp_raw_data.py --help
 
 ### 2. Align review weaknesses with rebuttal segments
 
-[align_weakness_rebuttal.py](/Users/yiling/Desktop/ActReview/Data_Collection/align_weakness_rebuttal.py) decomposes review text into atomic weakness points and maps each weakness to the rebuttal span that addresses it.
+[align_weakness_rebuttal.py](Data_Collection/align_weakness_rebuttal.py) decomposes review text into atomic weakness points and maps each weakness to the rebuttal span that addresses it.
 
 This script uses **Azure OpenAI** and expects environment variables such as:
 
@@ -81,11 +81,11 @@ export AZURE_OPENAI_API_VERSION=2024-12-01-preview
 
 ### 3. Classify weaknesses into the taxonomy
 
-[classify_weakness.py](/Users/yiling/Desktop/ActReview/Data_Collection/classify_weakness.py) assigns each weakness to the paper's taxonomy of **7 L1 categories** and **17 L2 categories**. The classifier writes a `weakness_category` field with label ids, names, confidence, and reasoning.
+[classify_weakness.py](Data_Collection/classify_weakness.py) assigns each weakness to the paper's taxonomy of **7 L1 categories** and **17 L2 categories**. The classifier writes a `weakness_category` field with label ids, names, confidence, and reasoning.
 
 ### 4. Generate enhanced actionable reviews
 
-[generate_enhanced_reviews.py](/Users/yiling/Desktop/ActReview/Data_Collection/generate_enhanced_reviews.py) rewrites vague weaknesses into structured actionable peer-review objects:
+[generate_enhanced_reviews.py](Data_Collection/generate_enhanced_reviews.py) rewrites vague weaknesses into structured actionable peer-review objects:
 
 - `claim`
 - `evidence`
@@ -102,7 +102,7 @@ The script includes validation to prevent:
 
 ### 5. Retrieve task-specific paper snippets
 
-[align_snippets_dual_task.py](/Users/yiling/Desktop/ActReview/Data_Collection/align_snippets_dual_task.py) downloads PDFs, extracts text, and attaches localized evidence for both tasks:
+[align_snippets_dual_task.py](Data_Collection/align_snippets_dual_task.py) downloads PDFs, extracts text, and attaches localized evidence for both tasks:
 
 - `aligned_snippets_task1`
 - `aligned_snippets_task2_evidence`
@@ -180,7 +180,7 @@ The main fields are:
 
 ### Convert the dataset into chat-format SFT data
 
-[convert_to_sft.py](/Users/yiling/Desktop/ActReview/SFT/convert_to_sft.py) transforms classified enhanced reviews into the multi-turn training format expected by Qwen-style chat fine-tuning.
+[convert_to_sft.py](SFT/convert_to_sft.py) transforms classified enhanced reviews into the multi-turn training format expected by Qwen-style chat fine-tuning.
 
 It creates records like:
 
@@ -202,10 +202,10 @@ python SFT/convert_to_sft.py \
 
 The repository trains **dedicated models** for the two tasks:
 
-- [sft_train_task1.py](/Users/yiling/Desktop/ActReview/SFT/sft_train_task1.py)
-- [sft_train_task2.py](/Users/yiling/Desktop/ActReview/SFT/sft_train_task2.py)
+- [sft_train_task1.py](SFT/sft_train_task1.py)
+- [sft_train_task2.py](SFT/sft_train_task2.py)
 
-Both use [sft_train_common.py](/Users/yiling/Desktop/ActReview/SFT/sft_train_common.py), which supports:
+Both use [sft_train_common.py](SFT/sft_train_common.py), which supports:
 
 - Qwen/Qwen3-8B-Base initialization,
 - bf16 training,
@@ -244,7 +244,7 @@ python SFT/sft_train_task2.py \
 
 ## SFT Inference
 
-[inference.py](/Users/yiling/Desktop/ActReview/SFT/inference.py) runs inference for:
+[inference.py](SFT/inference.py) runs inference for:
 
 - `task1`
 - `task2`
@@ -268,7 +268,7 @@ The RL pipeline is organized as an offline rubric-construction stage followed by
 
 ### Stage 1: Generate SFT candidates
 
-[stage1_sft_candidates.py](/Users/yiling/Desktop/ActReview/Rubric_RL/stage1_sft_candidates.py) runs the SFT model over rubric specs and caches candidate outputs. It supports multi-GPU sharding through `--num_workers` and `--gpu_ids`.
+[stage1_sft_candidates.py](Rubric_RL/stage1_sft_candidates.py) runs the SFT model over rubric specs and caches candidate outputs. It supports multi-GPU sharding through `--num_workers` and `--gpu_ids`.
 
 ```bash
 python Rubric_RL/stage1_sft_candidates.py \
@@ -280,7 +280,7 @@ python Rubric_RL/stage1_sft_candidates.py \
 
 ### Stage 2: Generate GPT candidates
 
-[stage2_gpt_candidates.py](/Users/yiling/Desktop/ActReview/Rubric_RL/stage2_gpt_candidates.py) generates stronger or more diverse reference candidates using OpenAI models, either through synchronous API calls or the Batch API.
+[stage2_gpt_candidates.py](Rubric_RL/stage2_gpt_candidates.py) generates stronger or more diverse reference candidates using OpenAI models, either through synchronous API calls or the Batch API.
 
 Expected environment:
 
@@ -301,7 +301,7 @@ python Rubric_RL/stage2_gpt_candidates.py \
 
 ### Stage 3: Extract weakness-specific rubrics
 
-[stage3_extract_rubrics.py](/Users/yiling/Desktop/ActReview/Rubric_RL/stage3_extract_rubrics.py) builds instance-level rubrics from the spec, SFT candidates, and GPT candidates. It can also generate verifier functions for format-oriented requirements.
+[stage3_extract_rubrics.py](Rubric_RL/stage3_extract_rubrics.py) builds instance-level rubrics from the spec, SFT candidates, and GPT candidates. It can also generate verifier functions for format-oriented requirements.
 
 ```bash
 python Rubric_RL/stage3_extract_rubrics.py \
@@ -314,7 +314,7 @@ python Rubric_RL/stage3_extract_rubrics.py \
 
 ### Convert rubrics into verl data
 
-[prepare_verl_data.py](/Users/yiling/Desktop/ActReview/Rubric_RL/prepare_verl_data.py) converts the final rubric JSONL into parquet files used by verl GRPO training.
+[prepare_verl_data.py](Rubric_RL/prepare_verl_data.py) converts the final rubric JSONL into parquet files used by verl GRPO training.
 
 ```bash
 python Rubric_RL/prepare_verl_data.py \
@@ -327,8 +327,8 @@ python Rubric_RL/prepare_verl_data.py \
 
 The task-specific reward implementations are:
 
-- [rubric_reward_verl_task1.py](/Users/yiling/Desktop/ActReview/Rubric_RL/rubric_reward_verl_task1.py)
-- [rubric_reward_verl_task2.py](/Users/yiling/Desktop/ActReview/Rubric_RL/rubric_reward_verl_task2.py)
+- [rubric_reward_verl_task1.py](Rubric_RL/rubric_reward_verl_task1.py)
+- [rubric_reward_verl_task2.py](Rubric_RL/rubric_reward_verl_task2.py)
 
 These files implement rubric-based soft scoring with additional structure, repetition, and formatting penalties. They also maintain persistent SQLite caches for judge outputs to reduce repeated API cost.
 
@@ -336,14 +336,14 @@ These files implement rubric-based soft scoring with additional structure, repet
 
 After RL training, the repository provides separate inference scripts:
 
-- [inference_task1_grpo.py](/Users/yiling/Desktop/ActReview/Rubric_RL/inference_task1_grpo.py)
-- [inference_task2_grpo.py](/Users/yiling/Desktop/ActReview/Rubric_RL/inference_task2_grpo.py)
+- [inference_task1_grpo.py](Rubric_RL/inference_task1_grpo.py)
+- [inference_task2_grpo.py](Rubric_RL/inference_task2_grpo.py)
 
 Task 1 inference generates weakness claims from the paper context and weakness label. Task 2 inference uses ground-truth claims as input and evaluates the RL-tuned suggestion generator.
 
 ## Environment and Dependencies
 
-The repository now includes a dependency file: [requirements.txt](/Users/yiling/Desktop/ActReview/requirements.txt).
+The repository now includes a dependency file: [requirements.txt](requirements.txt).
 
 Recommended setup:
 
