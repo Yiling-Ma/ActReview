@@ -1,10 +1,6 @@
 # ACTREVIEW: A Review-to-Revision Framework for Actionable Peer Review Generation
 
-<p align="center">
-  <b>Paper 📄</b> · <a href="#">ActReview</a> |
-  <b>Dataset 🐙</b> · <a href="https://huggingface.co/datasets/YilingMa/ActReview-40K">ActReview-40K</a> |
-  <b>Code 💻</b> · <a href="https://github.com/Yiling-Ma/ActReview">ActReview</a>
-</p>
+
 
 ## Overview
 ActReview studies **actionable peer-review generation**: instead of only identifying weaknesses in a paper, the model should also produce revision-oriented guidance that authors can directly act on. Following the paper, the repository formulates the problem as two linked subtasks:
@@ -388,15 +384,4 @@ Because of that, reproducing the full pipeline from raw review threads requires:
 - network access,
 - access to the same or equivalent OpenReview data snapshots.
 
-## Citation
 
-If you use this repository or the ActReview dataset, please cite the ActReview paper.
-
-```bibtex
-@article{ma2026actreview,
-  title={ACTREVIEW: A Review-to-Revision Framework for Actionable Peer Review Generation},
-  author={Ma, Yiling and Zhao, Yilun and Wu, Sihong and Chen, Ziyu and Patwardhan, Manasi and Cohan, Arman},
-  journal={arXiv},
-  year={2026}
-}
-```
